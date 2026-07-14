@@ -103,39 +103,64 @@ def test_summary_per_project_includes_percentage_and_average(
     assert lines[project_section_start + 2] == "- Internal Tools: 0.75h (23.08%, avg 0.11h/day)"
 
 
-def test_summary_per_tag_includes_percentage_and_average(
+def test_summary_per_tag_groups_by_combined_tag_set(
     sample_time_entries: list[dict], sample_project_lookup: dict[int, str]
 ) -> None:
     summary = format_summary(sample_time_entries, sample_project_lookup, UTC, DIGEST_PERIOD_DAYS)
     lines = summary.splitlines()
 
     tag_section_start = lines.index("**Hours per tag:**")
-    # billable & client-facing: 5400s = 1.50h each (tied, alphabetical order)
-    # No Tag: 3600s = 1.00h ; urgent: 2700s = 0.75h
-    assert lines[tag_section_start + 1] == "- billable: 1.50h (46.15%, avg 0.21h/day)"
-    assert lines[tag_section_start + 2] == "- client-facing: 1.50h (46.15%, avg 0.21h/day)"
-    assert lines[tag_section_start + 3] == "- No Tag: 1.00h (30.77%, avg 0.14h/day)"
-    assert lines[tag_section_start + 4] == "- urgent: 0.75h (23.08%, avg 0.11h/day)"
+    # billable+client-facing (entry1): 5400s = 1.50h
+    # No Tag (entry3): 3600s = 1.00h ; urgent (entry2): 2700s = 0.75h
+    # Percentages sum to 100% since tag groups partition the entries.
+    assert (
+        lines[tag_section_start + 1] == "- billable, client-facing: 1.50h (46.15%, avg 0.21h/day)"
+    )
+    assert lines[tag_section_start + 2] == "- No Tag: 1.00h (30.77%, avg 0.14h/day)"
+    assert lines[tag_section_start + 3] == "- urgent: 0.75h (23.08%, avg 0.11h/day)"
 
 
-def test_summary_per_tag_multi_tag_entry_counted_in_each_tag(
+def test_summary_per_tag_rolls_up_entries_with_same_tag_set_in_different_order(
     sample_project_lookup: dict[int, str],
 ) -> None:
-    # An entry with two tags contributes its full duration to both tags, so
-    # per-tag hours need not sum to the total.
-    entry = {
+    # Two entries carrying the same set of tags, applied in a different
+    # order, must land in the same bucket and have their time summed.
+    entry_a = {
         "project_id": 111,
-        "description": "Dual tagged",
+        "description": "First",
         "start": "2026-07-06T09:00:00Z",
         "duration": 3600,
         "tags": ["a", "b"],
     }
-    summary = format_summary([entry], sample_project_lookup, UTC, DIGEST_PERIOD_DAYS)
+    entry_b = {
+        "project_id": 111,
+        "description": "Second",
+        "start": "2026-07-06T10:00:00Z",
+        "duration": 1800,
+        "tags": ["b", "a"],
+    }
+    summary = format_summary([entry_a, entry_b], sample_project_lookup, UTC, DIGEST_PERIOD_DAYS)
     lines = summary.splitlines()
 
     tag_section_start = lines.index("**Hours per tag:**")
-    assert lines[tag_section_start + 1] == "- a: 1.00h (100.00%, avg 0.14h/day)"
-    assert lines[tag_section_start + 2] == "- b: 1.00h (100.00%, avg 0.14h/day)"
+    assert lines[tag_section_start + 1] == "- a, b: 1.50h (100.00%, avg 0.21h/day)"
+    assert lines[tag_section_start + 2] == ""
+
+
+def test_table_and_summary_sort_tags_alphabetically(
+    sample_project_lookup: dict[int, str],
+) -> None:
+    entry = {
+        "project_id": 111,
+        "description": "Client delivery work",
+        "start": "2026-07-06T09:00:00Z",
+        "duration": 3600,
+        "tags": ["OLI Delivery", "CSL Behring"],
+    }
+    digest = format_digest([entry], sample_project_lookup, UTC, DIGEST_PERIOD_DAYS)
+
+    assert "| CSL Behring, OLI Delivery |" in digest
+    assert "- CSL Behring, OLI Delivery: 1.00h (100.00%, avg 0.14h/day)" in digest
 
 
 def test_summary_per_day(

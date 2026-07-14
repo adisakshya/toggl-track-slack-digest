@@ -73,6 +73,8 @@ Changed 2026-07: added the Tags column and per-project/per-tag percentage
 + average-hours/day figures (average is total hours for that bucket divided
 by `DIGEST_PERIOD_DAYS`); dropped the "N timer(s) currently running" notice
 entirely -- running entries are now silently excluded, since the digest
-only reports completed time. An entry with multiple tags contributes its
-full duration to each tag, so per-tag hours/percentages need not sum to
-the total.
+only reports completed time. Entries are grouped into a tag bucket by their
+exact set of tags, sorted alphabetically and comma-joined (so an entry
+tagged both "OLI Delivery" and "CSL Behring" rolls into one
+"CSL Behring, OLI Delivery" row, matching its Tags cell in the table) --
+per-tag-group hours and percentages sum to the total, same as per-project.

@@ -77,14 +77,14 @@ def format_time_entries_table(
 
     Returns:
         A Markdown table string with header, separator, and one row per
-        entry. The Tags column joins all tags on an entry with ", "; an
-        entry with no tags shows "No Tag".
+        entry. The Tags column shows an entry's tags sorted alphabetically
+        and joined with ", "; an entry with no tags shows "No Tag".
     """
     rows = []
     for entry in entries:
         date = _local_date(entry, timezone)
         project = _project_name(entry, project_lookup)
-        tags = _tags_cell(entry)
+        tags = _tag_group_label(entry)
         description = entry.get("description") or NO_DESCRIPTION_LABEL
         duration = format_duration(entry["duration"])
         rows.append((date, project, tags, description, duration))
@@ -118,9 +118,12 @@ def format_summary(
         A Markdown string with a "## Summary" heading followed by total
         hours, hours per project (descending, with % of total and average
         hours/day), hours per tag (same shape), and hours per day
-        (chronological). A time entry with multiple tags contributes its
-        full duration to each of its tags, so per-tag hours/percentages
-        need not sum to the total.
+        (chronological). Entries are grouped into a tag bucket by their
+        exact set of tags (sorted alphabetically, comma-joined) -- e.g. an
+        entry tagged both "OLI Delivery" and "CSL Behring" rolls into one
+        "CSL Behring, OLI Delivery" row rather than being double-counted
+        across two separate tag rows -- so per-tag-group hours and
+        percentages sum to the total, same as per-project.
     """
     total_seconds = sum(entry["duration"] for entry in entries)
 
@@ -130,8 +133,7 @@ def format_summary(
     for entry in entries:
         seconds_by_project[_project_name(entry, project_lookup)] += entry["duration"]
         seconds_by_day[_local_date(entry, timezone)] += entry["duration"]
-        for tag in _tag_names(entry):
-            seconds_by_tag[tag] += entry["duration"]
+        seconds_by_tag[_tag_group_label(entry)] += entry["duration"]
 
     project_lines = _breakdown_lines(seconds_by_project, total_seconds, digest_period_days)
     tag_lines = _breakdown_lines(seconds_by_tag, total_seconds, digest_period_days)
@@ -199,16 +201,16 @@ def _project_name(entry: dict[str, Any], project_lookup: dict[int, str]) -> str:
     return project_lookup.get(project_id, NO_PROJECT_LABEL)
 
 
-def _tag_names(entry: dict[str, Any]) -> list[str]:
-    """Return the entry's tag names, or `[NO_TAG_LABEL]` if it has none."""
-    tags = entry.get("tags") or []
-    return list(tags) if tags else [NO_TAG_LABEL]
+def _tag_group_label(entry: dict[str, Any]) -> str:
+    """Return the entry's tags, sorted and comma-joined, or "No Tag".
 
-
-def _tags_cell(entry: dict[str, Any]) -> str:
-    """Render the table's Tags cell: tags joined with ", ", or "No Tag"."""
+    Used both as the table's Tags cell and as the summary's per-tag bucket
+    key, so entries sharing the exact same set of tags -- regardless of
+    the order Toggl returned them in -- always render identically and
+    roll up into the same row.
+    """
     tags = entry.get("tags") or []
-    return TAG_JOIN_SEPARATOR.join(tags) if tags else NO_TAG_LABEL
+    return TAG_JOIN_SEPARATOR.join(sorted(tags)) if tags else NO_TAG_LABEL
 
 
 def _local_date(entry: dict[str, Any], timezone: ZoneInfo) -> str:
