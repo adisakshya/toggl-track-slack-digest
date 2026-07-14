@@ -47,7 +47,3 @@ TABLE_SEPARATOR = "| --- | --- | --- | --- |"
 NO_ENTRIES_MESSAGE = "No time entries logged this period."
 NO_PROJECT_LABEL = "No Project"
 NO_DESCRIPTION_LABEL = "(no description)"
-
-# --- Formatter: running-timer notice ---
-
-RUNNING_TIMERS_NOTICE_TEMPLATE = "_{count} timer(s) currently running (excluded from totals)._"

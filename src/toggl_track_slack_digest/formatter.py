@@ -18,7 +18,6 @@ from toggl_track_slack_digest.constants import (
     NO_DESCRIPTION_LABEL,
     NO_ENTRIES_MESSAGE,
     NO_PROJECT_LABEL,
-    RUNNING_TIMERS_NOTICE_TEMPLATE,
     TABLE_HEADER,
     TABLE_SEPARATOR,
 )
@@ -40,25 +39,19 @@ def format_digest(
 
     Returns:
         A Markdown string ready to post to Slack. If `entries` contains no
-        completed entries, returns a clean "no entries" message (plus a
-        note about any running timers) instead of an empty table.
+        completed entries, returns a clean "no entries" message instead of
+        an empty table. Entries for a timer that is still running (a
+        negative `duration`) are silently excluded -- this digest only
+        reports completed time.
     """
-    completed, running = TogglClient.split_completed_and_running(entries)
-    running_count = len(running)
+    completed, _running = TogglClient.split_completed_and_running(entries)
 
     if not completed:
-        message = NO_ENTRIES_MESSAGE
-        if running_count:
-            message += "\n\n" + RUNNING_TIMERS_NOTICE_TEMPLATE.format(count=running_count)
-        return message
+        return NO_ENTRIES_MESSAGE
 
     table = format_time_entries_table(completed, project_lookup, timezone)
     summary = format_summary(completed, project_lookup, timezone)
-
-    sections = [table, "", summary]
-    if running_count:
-        sections.append("\n" + RUNNING_TIMERS_NOTICE_TEMPLATE.format(count=running_count))
-    return "\n".join(sections)
+    return "\n".join([table, "", summary])
 
 
 def format_time_entries_table(

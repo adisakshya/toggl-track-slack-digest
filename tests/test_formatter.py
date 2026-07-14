@@ -116,17 +116,16 @@ def test_format_digest_excludes_running_entry_from_totals(
     digest = format_digest(entries, sample_project_lookup, UTC)
 
     assert "**Total hours:** 3.25h" in digest
-    assert "1 timer(s) currently running" in digest
     assert "In progress task" not in digest
+    assert "running" not in digest.lower()
 
 
-def test_format_digest_only_running_entries_shows_message_and_flag(
+def test_format_digest_only_running_entries_returns_clean_message(
     sample_running_entry: dict,
 ) -> None:
     digest = format_digest([sample_running_entry], {}, UTC)
 
-    assert digest.startswith("No time entries logged this period.")
-    assert "1 timer(s) currently running" in digest
+    assert digest == "No time entries logged this period."
 
 
 def test_format_digest_includes_table_and_summary(

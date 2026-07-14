@@ -116,9 +116,9 @@ class TogglClient:
 
         Returns:
             A `(completed, running)` tuple. `running` holds entries whose
-            timer is still active (negative `duration`); those should be
-            excluded from completed-time totals but may be surfaced
-            separately (e.g. "N timers currently running").
+            timer is still active (negative `duration`); this digest only
+            reports completed time, so callers discard `running` rather
+            than surfacing it.
         """
         completed = [e for e in entries if e.get("duration", 0) >= 0]
         running = [e for e in entries if e.get("duration", 0) < 0]
