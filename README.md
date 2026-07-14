@@ -1,0 +1,1 @@
+# toggl-track-slack-digest
