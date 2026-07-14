@@ -1,13 +1,14 @@
-# toggl-track-slack-digest
+# Toggl Track to Slack Digest
 
 A small, stateless Python job that fetches your Toggl Track time entries for
-the last N days, formats them into a Markdown table with a summary
-(total hours, hours per project, hours per day), and posts the result to a
-Slack channel via an Incoming Webhook. It's built to run on a weekly GitHub
-Actions cron so a digest shows up automatically, and the table format is
-deliberately rigid (fixed columns, fixed rounding, no merged cells) so that
-an LLM reading the Slack channel -- such as Claude -- can parse it reliably
-and compare patterns week over week.
+the last N days, formats them into a Markdown table (with project and tags
+per entry) plus a summary -- total hours, hours per project and per tag
+(each with % of total and average hours/day), and hours per day -- and
+posts the result to a Slack channel via an Incoming Webhook. It's built to
+run on a weekly GitHub Actions cron so a digest shows up automatically, and
+the format is deliberately rigid (fixed columns, fixed rounding, no merged
+cells) so that an LLM reading the Slack channel -- such as Claude -- can
+parse it reliably and compare patterns week over week.
 
 ## Architecture
 
@@ -59,11 +60,11 @@ See the end of this README for the exact click-by-click steps.
 
 | Variable | Required | Default | Description |
 | --- | --- | --- | --- |
-| `TOGGL_API_TOKEN` | Yes (secret) | -- | Toggl Track API token, from track.toggl.com/profile |
-| `TOGGL_WORKSPACE_ID` | Yes | -- | Toggl workspace id to pull projects from |
-| `SLACK_WEBHOOK_URL` | Yes (secret) | -- | Slack Incoming Webhook URL to post the digest to |
+| `TOGGL_API_TOKEN` | Yes (secret) | none | Toggl Track API token, from track.toggl.com/profile |
+| `TOGGL_WORKSPACE_ID` | Yes | none | Toggl workspace id to pull projects from |
+| `SLACK_WEBHOOK_URL` | Yes (secret) | none | Slack Incoming Webhook URL to post the digest to |
 | `DIGEST_PERIOD_DAYS` | No | `7` | Number of trailing days the digest covers |
-| `TOGGL_PROJECT_IDS` | No | (all projects) | Comma-separated Toggl project ids to filter to |
+| `TOGGL_PROJECT_IDS` | No | *(empty)* -- all projects | Comma-separated Toggl project ids to filter to |
 | `TIMEZONE` | No | `UTC` | IANA timezone used for date range computation and display |
 
 ## Local development
