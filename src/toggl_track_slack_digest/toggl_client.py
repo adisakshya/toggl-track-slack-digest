@@ -28,6 +28,7 @@ from toggl_track_slack_digest.constants import (
     TOGGL_MAX_RETRIES,
     TOGGL_MIN_REQUEST_INTERVAL_SECONDS,
     TOGGL_REQUEST_TIMEOUT_SECONDS,
+    TOGGL_TIME_ENTRIES_MAX_RESULTS,
     TOGGL_TIME_ENTRIES_PATH,
     TOGGL_WORKSPACE_PROJECTS_PATH_TEMPLATE,
 )
@@ -78,14 +79,30 @@ class TogglClient:
             `duration` are included (they represent a timer still running)
             -- callers are responsible for excluding them from
             completed-time totals.
+
+        Raises:
+            TogglAPIError: If the response hits Toggl's documented cap of
+                `TOGGL_TIME_ENTRIES_MAX_RESULTS` entries per call. Toggl
+                silently truncates beyond this cap rather than erroring,
+                so a capped response can't be trusted as complete -- this
+                fails loudly instead of posting an under-reported digest.
         """
         response = self._request(
             "GET",
             TOGGL_TIME_ENTRIES_PATH,
             params={"start_date": start_date, "end_date": end_date},
         )
-        data = response.json()
-        return data if data else []
+        data = response.json() or []
+
+        if len(data) >= TOGGL_TIME_ENTRIES_MAX_RESULTS:
+            raise TogglAPIError(
+                f"Toggl API returned {len(data)} time entries, at or above the "
+                f"documented cap of {TOGGL_TIME_ENTRIES_MAX_RESULTS} per "
+                f"{TOGGL_TIME_ENTRIES_PATH} call -- results may be truncated. "
+                "Narrow DIGEST_PERIOD_DAYS or TOGGL_PROJECT_IDS and try again."
+            )
+
+        return data
 
     def get_projects(self, workspace_id: str) -> dict[int, str]:
         """Fetch all projects for a workspace and map id -> name.

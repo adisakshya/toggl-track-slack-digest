@@ -22,6 +22,11 @@ TOGGL_MAX_RETRIES = 5
 TOGGL_DEFAULT_BACKOFF_SECONDS = 2.0
 TOGGL_REQUEST_TIMEOUT_SECONDS = 30
 
+# `/me/time_entries` returns at most this many entries per call, with no
+# error signaled when the cap is hit -- see get_time_entries in
+# toggl_client.py for how this is detected and surfaced.
+TOGGL_TIME_ENTRIES_MAX_RESULTS = 1000
+
 # --- Slack ---
 
 SLACK_REQUEST_TIMEOUT_SECONDS = 10

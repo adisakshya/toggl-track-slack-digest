@@ -56,6 +56,38 @@ def test_get_time_entries_handles_null_response() -> None:
 
 
 @responses.activate
+def test_get_time_entries_at_cap_raises() -> None:
+    responses.add(
+        responses.GET,
+        f"{_BASE_URL}/me/time_entries",
+        json=[{"id": i, "duration": 60} for i in range(1000)],
+        status=200,
+    )
+
+    client = TogglClient(api_token="test-token")
+    try:
+        client.get_time_entries("2026-07-06T00:00:00Z", "2026-07-13T00:00:00Z")
+        assert False, "expected TogglAPIError"
+    except TogglAPIError as exc:
+        assert "1000" in str(exc)
+
+
+@responses.activate
+def test_get_time_entries_just_under_cap_does_not_raise() -> None:
+    responses.add(
+        responses.GET,
+        f"{_BASE_URL}/me/time_entries",
+        json=[{"id": i, "duration": 60} for i in range(999)],
+        status=200,
+    )
+
+    client = TogglClient(api_token="test-token")
+    entries = client.get_time_entries("2026-07-06T00:00:00Z", "2026-07-13T00:00:00Z")
+
+    assert len(entries) == 999
+
+
+@responses.activate
 def test_get_projects_maps_id_to_name(sample_projects_response: list[dict]) -> None:
     responses.add(
         responses.GET,

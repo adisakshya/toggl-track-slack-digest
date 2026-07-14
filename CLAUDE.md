@@ -21,6 +21,13 @@ Actions cron).
   and retries on 429 with backoff (honoring `Retry-After`). Don't add new
   Toggl calls without going through `TogglClient._request`, and don't
   increase request frequency without re-checking this limit.
+- **`/me/time_entries` caps at 1000 results per call**, with no error
+  signaled when the cap is hit -- a capped response can't be trusted as
+  complete. `get_time_entries` fails loudly (`TogglAPIError`) rather than
+  silently posting an under-reported digest. Don't add auto-pagination
+  here (it would multiply `/me/*` requests against the 30/hour budget
+  above) -- point users at narrowing `DIGEST_PERIOD_DAYS` or
+  `TOGGL_PROJECT_IDS` instead.
 - **Never log secrets.** `TOGGL_API_TOKEN` and `SLACK_WEBHOOK_URL` must
   never appear in log output, print statements, or exceptions. Log request
   paths/status, not headers or auth values.

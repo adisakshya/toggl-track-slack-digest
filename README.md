@@ -98,6 +98,10 @@ the variables another way.
 - **3-month lookback limit**: Toggl's `/me/time_entries` endpoint only
   returns entries within roughly the last 3 months. `DIGEST_PERIOD_DAYS`
   should stay well under that.
+- **1000-entry cap per call**: `/me/time_entries` returns at most 1000
+  entries and gives no error when it truncates. If a run hits that cap,
+  the job fails with a clear error rather than posting an under-reported
+  digest -- narrow `DIGEST_PERIOD_DAYS` or `TOGGL_PROJECT_IDS` and re-run.
 - **Slack tables don't render visually**: Slack's `mrkdwn` formatting does
   not turn Markdown pipe tables into an actual visual table -- it displays
   the raw `| a | b |` text. This is intentional here: the digest is meant to
