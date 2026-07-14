@@ -1,0 +1,47 @@
+name: Weekly Toggl Digest
+
+on:
+  # Runs every Monday at 08:00 UTC. Edit the cron expression to change the
+  # cadence/time -- fields are: minute hour day-of-month month day-of-week.
+  # https://crontab.guru is helpful for editing this safely.
+  schedule:
+    - cron: "0 8 * * 1"
+  # Allows triggering a run manually from the Actions tab, useful for
+  # testing the workflow without waiting for the schedule.
+  workflow_dispatch: {}
+
+jobs:
+  digest:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: make install
+
+      - name: Run digest
+        env:
+          # Secrets: set these under Settings -> Secrets and variables ->
+          # Actions -> Secrets. Never store tokens/webhook URLs as plain
+          # repo Variables since those are visible in logs and to anyone
+          # with read access to the repo.
+          TOGGL_API_TOKEN: ${{ secrets.TOGGL_API_TOKEN }}
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+          # Non-secret config: set these under Settings -> Secrets and
+          # variables -> Actions -> Variables (repo or org level). They're
+          # not sensitive, so Variables (visible in the UI, easy to tweak
+          # without editing this file) are preferable to hardcoding them
+          # here -- but hardcoding here as plain env values is also fine if
+          # you'd rather have config changes show up in git history instead
+          # of being editable out-of-band.
+          TOGGL_WORKSPACE_ID: ${{ vars.TOGGL_WORKSPACE_ID }}
+          DIGEST_PERIOD_DAYS: ${{ vars.DIGEST_PERIOD_DAYS }}
+          TOGGL_PROJECT_IDS: ${{ vars.TOGGL_PROJECT_IDS }}
+          TIMEZONE: ${{ vars.TIMEZONE }}
+        run: make run
