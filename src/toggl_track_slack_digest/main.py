@@ -66,7 +66,9 @@ def run() -> None:
     logger.info("Fetched %d projects", len(project_lookup))
 
     logger.info("Formatting digest")
-    digest_text = format_digest(entries, project_lookup, config.zone_info)
+    digest_text = format_digest(
+        entries, project_lookup, config.zone_info, config.digest_period_days
+    )
 
     logger.info("Posting digest to Slack")
     slack_client = SlackClient(config.slack_webhook_url)

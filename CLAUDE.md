@@ -60,10 +60,19 @@ Actions cron).
 
 ## Format stability
 
-The Markdown table columns (`Date | Project | Description | Duration
-(h:mm)`), the row sort order (date then project), the 2-decimal hour
-rounding, and the summary section order are all deliberately fixed so a
-downstream reader (e.g. Claude reading the Slack channel) can compare
+The Markdown table columns (`Date | Project | Tags | Description | Duration
+(h:mm)`), the row sort order (date then project), the 2-decimal hour/
+percentage rounding, and the summary section order (Total hours -> Hours
+per project -> Hours per tag -> Hours per day) are all deliberately fixed
+so a downstream reader (e.g. Claude reading the Slack channel) can compare
 week-over-week output without format drift. Don't change these without a
 good reason, and if you do, note it clearly since it breaks that
 comparability.
+
+Changed 2026-07: added the Tags column and per-project/per-tag percentage
++ average-hours/day figures (average is total hours for that bucket divided
+by `DIGEST_PERIOD_DAYS`); dropped the "N timer(s) currently running" notice
+entirely -- running entries are now silently excluded, since the digest
+only reports completed time. An entry with multiple tags contributes its
+full duration to each tag, so per-tag hours/percentages need not sum to
+the total.

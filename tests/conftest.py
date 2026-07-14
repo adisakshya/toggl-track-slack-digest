@@ -7,7 +7,12 @@ import pytest
 
 @pytest.fixture
 def sample_time_entries() -> list[dict]:
-    """A small set of completed time entries spanning two days/projects."""
+    """A small set of completed time entries spanning two days/projects.
+
+    Entry 1 carries two tags, entry 2 carries one tag, and entry 3 carries
+    no tags -- covering multi-tag, single-tag, and untagged cases for the
+    per-tag summary breakdown.
+    """
     return [
         {
             "id": 1,
@@ -17,6 +22,7 @@ def sample_time_entries() -> list[dict]:
             "start": "2026-07-06T09:00:00Z",
             "stop": "2026-07-06T10:30:00Z",
             "duration": 5400,
+            "tags": ["billable", "client-facing"],
         },
         {
             "id": 2,
@@ -26,6 +32,7 @@ def sample_time_entries() -> list[dict]:
             "start": "2026-07-06T11:00:00Z",
             "stop": "2026-07-06T11:45:00Z",
             "duration": 2700,
+            "tags": ["urgent"],
         },
         {
             "id": 3,
@@ -35,6 +42,7 @@ def sample_time_entries() -> list[dict]:
             "start": "2026-07-07T14:00:00Z",
             "stop": "2026-07-07T15:00:00Z",
             "duration": 3600,
+            "tags": [],
         },
     ]
 

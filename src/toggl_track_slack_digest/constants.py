@@ -42,8 +42,10 @@ DEFAULT_TIMEZONE = "UTC"
 
 # --- Formatter: table ---
 
-TABLE_HEADER = "| Date | Project | Description | Duration (h:mm) |"
-TABLE_SEPARATOR = "| --- | --- | --- | --- |"
+TABLE_HEADER = "| Date | Project | Tags | Description | Duration (h:mm) |"
+TABLE_SEPARATOR = "| --- | --- | --- | --- | --- |"
 NO_ENTRIES_MESSAGE = "No time entries logged this period."
 NO_PROJECT_LABEL = "No Project"
+NO_TAG_LABEL = "No Tag"
 NO_DESCRIPTION_LABEL = "(no description)"
+TAG_JOIN_SEPARATOR = ", "
