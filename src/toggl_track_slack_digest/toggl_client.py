@@ -30,9 +30,10 @@ _MAX_RETRIES = 5
 _DEFAULT_BACKOFF_SECONDS = 2.0
 _REQUEST_TIMEOUT_SECONDS = 30
 
-#: Toggl uses `duration == -1` to mark a time entry whose timer is still
-#: running (it has a `start` but no `stop` yet).
-RUNNING_DURATION_SENTINEL = -1
+#: Toggl marks a time entry whose timer is still running (has a `start` but
+#: no `stop` yet) with a negative `duration`. It is not reliably `-1` --
+#: commonly it is `-1 * <unix start time>` -- so callers must check
+#: `duration < 0`, not equality against a fixed sentinel value.
 
 
 class TogglAPIError(Exception):
@@ -69,9 +70,9 @@ class TogglClient:
 
         Returns:
             A list of raw time entry dicts as returned by the API. Empty
-            list if no entries fall in the range. Entries with
-            `duration == -1` are included (they represent a timer still
-            running) -- callers are responsible for excluding them from
+            list if no entries fall in the range. Entries with a negative
+            `duration` are included (they represent a timer still running)
+            -- callers are responsible for excluding them from
             completed-time totals.
         """
         response = self._request(
@@ -110,12 +111,12 @@ class TogglClient:
 
         Returns:
             A `(completed, running)` tuple. `running` holds entries whose
-            timer is still active (`duration == -1`); those should be
+            timer is still active (negative `duration`); those should be
             excluded from completed-time totals but may be surfaced
             separately (e.g. "N timers currently running").
         """
-        completed = [e for e in entries if e.get("duration", 0) != RUNNING_DURATION_SENTINEL]
-        running = [e for e in entries if e.get("duration", 0) == RUNNING_DURATION_SENTINEL]
+        completed = [e for e in entries if e.get("duration", 0) >= 0]
+        running = [e for e in entries if e.get("duration", 0) < 0]
         return completed, running
 
     def _request(

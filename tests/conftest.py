@@ -41,7 +41,12 @@ def sample_time_entries() -> list[dict]:
 
 @pytest.fixture
 def sample_running_entry() -> dict:
-    """A single time entry representing a currently running timer."""
+    """A single time entry representing a currently running timer.
+
+    Toggl represents a running timer's `duration` as a negative number --
+    typically `-1 * <unix start time>`, not literally `-1` -- so this
+    fixture uses a realistic large negative value rather than `-1`.
+    """
     return {
         "id": 4,
         "workspace_id": 999,
@@ -49,7 +54,7 @@ def sample_running_entry() -> dict:
         "description": "In progress task",
         "start": "2026-07-07T16:00:00Z",
         "stop": None,
-        "duration": -1,
+        "duration": -1783440000,
     }
 
 

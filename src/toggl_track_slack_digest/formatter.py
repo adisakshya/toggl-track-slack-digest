@@ -149,8 +149,9 @@ def format_duration(seconds: int) -> str:
     """Format a duration in seconds as `H:MM`.
 
     Args:
-        seconds: Duration in seconds. Must not be the running-timer
-            sentinel (-1) -- callers must filter those out first.
+        seconds: Duration in seconds. Must not be negative -- negative
+            values mark a still-running timer; callers must filter those
+            out first.
 
     Returns:
         A string like `"1:05"` or `"10:00"`.

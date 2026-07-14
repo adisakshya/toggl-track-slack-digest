@@ -140,4 +140,26 @@ def test_split_completed_and_running_excludes_running_from_completed(
 
     assert completed == sample_time_entries
     assert running == [sample_running_entry]
-    assert all(entry["duration"] != -1 for entry in completed)
+    assert all(entry["duration"] >= 0 for entry in completed)
+
+
+def test_split_completed_and_running_handles_non_negative_one_running_duration() -> None:
+    # Toggl represents a running timer's duration as -1 * <unix start time>,
+    # not literally -1, so any negative value must be treated as running.
+    running_entry = {
+        "id": 5,
+        "project_id": 111,
+        "start": "2026-07-07T16:00:00Z",
+        "duration": -1783440000,
+    }
+    completed_entry = {
+        "id": 6,
+        "project_id": 111,
+        "start": "2026-07-07T09:00:00Z",
+        "duration": 1800,
+    }
+
+    completed, running = TogglClient.split_completed_and_running([running_entry, completed_entry])
+
+    assert completed == [completed_entry]
+    assert running == [running_entry]
