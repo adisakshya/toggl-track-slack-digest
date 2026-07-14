@@ -22,18 +22,22 @@ from typing import Any, Optional
 
 import requests
 
+from toggl_track_slack_digest.constants import (
+    TOGGL_API_BASE_URL,
+    TOGGL_DEFAULT_BACKOFF_SECONDS,
+    TOGGL_MAX_RETRIES,
+    TOGGL_MIN_REQUEST_INTERVAL_SECONDS,
+    TOGGL_REQUEST_TIMEOUT_SECONDS,
+    TOGGL_TIME_ENTRIES_PATH,
+    TOGGL_WORKSPACE_PROJECTS_PATH_TEMPLATE,
+)
+
 logger = logging.getLogger(__name__)
 
-_BASE_URL = "https://api.track.toggl.com/api/v9"
-_MIN_REQUEST_INTERVAL_SECONDS = 1.0
-_MAX_RETRIES = 5
-_DEFAULT_BACKOFF_SECONDS = 2.0
-_REQUEST_TIMEOUT_SECONDS = 30
-
-#: Toggl marks a time entry whose timer is still running (has a `start` but
-#: no `stop` yet) with a negative `duration`. It is not reliably `-1` --
-#: commonly it is `-1 * <unix start time>` -- so callers must check
-#: `duration < 0`, not equality against a fixed sentinel value.
+# Toggl marks a time entry whose timer is still running (has a `start` but
+# no `stop` yet) with a negative `duration`. It is not reliably `-1` --
+# commonly it is `-1 * <unix start time>` -- so callers must check
+# `duration < 0`, not equality against a fixed sentinel value.
 
 
 class TogglAPIError(Exception):
@@ -77,7 +81,7 @@ class TogglClient:
         """
         response = self._request(
             "GET",
-            "/me/time_entries",
+            TOGGL_TIME_ENTRIES_PATH,
             params={"start_date": start_date, "end_date": end_date},
         )
         data = response.json()
@@ -96,7 +100,8 @@ class TogglClient:
             Mapping of project id to project name. Empty dict if the
             workspace has no projects.
         """
-        response = self._request("GET", f"/workspaces/{workspace_id}/projects")
+        path = TOGGL_WORKSPACE_PROJECTS_PATH_TEMPLATE.format(workspace_id=workspace_id)
+        response = self._request("GET", path)
         data = response.json()
         return {project["id"]: project["name"] for project in (data or [])}
 
@@ -122,7 +127,7 @@ class TogglClient:
     def _request(
         self, method: str, path: str, params: Optional[dict[str, Any]] = None
     ) -> requests.Response:
-        url = f"{_BASE_URL}{path}"
+        url = f"{TOGGL_API_BASE_URL}{path}"
         attempt = 0
         while True:
             self._throttle()
@@ -132,15 +137,15 @@ class TogglClient:
                 url,
                 params=params,
                 auth=(self._api_token, "api_token"),
-                timeout=_REQUEST_TIMEOUT_SECONDS,
+                timeout=TOGGL_REQUEST_TIMEOUT_SECONDS,
             )
             self._last_request_time = time.monotonic()
 
             if response.status_code == 429:
                 attempt += 1
-                if attempt > _MAX_RETRIES:
+                if attempt > TOGGL_MAX_RETRIES:
                     raise TogglAPIError(
-                        f"Toggl API rate limit exceeded after {_MAX_RETRIES} retries "
+                        f"Toggl API rate limit exceeded after {TOGGL_MAX_RETRIES} retries "
                         f"for {method} {path}"
                     )
                 wait_seconds = self._retry_delay(response, attempt)
@@ -150,7 +155,7 @@ class TogglClient:
                     path,
                     wait_seconds,
                     attempt,
-                    _MAX_RETRIES,
+                    TOGGL_MAX_RETRIES,
                 )
                 time.sleep(wait_seconds)
                 continue
@@ -168,7 +173,7 @@ class TogglClient:
         if self._last_request_time is None:
             return
         elapsed = time.monotonic() - self._last_request_time
-        remaining = _MIN_REQUEST_INTERVAL_SECONDS - elapsed
+        remaining = TOGGL_MIN_REQUEST_INTERVAL_SECONDS - elapsed
         if remaining > 0:
             time.sleep(remaining)
 
@@ -180,4 +185,4 @@ class TogglClient:
                 return float(retry_after)
             except ValueError:
                 pass
-        return float(_DEFAULT_BACKOFF_SECONDS * (2 ** (attempt - 1)))
+        return float(TOGGL_DEFAULT_BACKOFF_SECONDS * (2 ** (attempt - 1)))

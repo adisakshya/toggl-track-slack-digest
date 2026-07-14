@@ -14,9 +14,9 @@ from typing import Any
 
 import requests
 
-logger = logging.getLogger(__name__)
+from toggl_track_slack_digest.constants import SLACK_REQUEST_TIMEOUT_SECONDS
 
-_REQUEST_TIMEOUT_SECONDS = 10
+logger = logging.getLogger(__name__)
 
 
 class SlackPostError(Exception):
@@ -57,11 +57,11 @@ class SlackClient:
             response = self._session.post(
                 self._webhook_url,
                 json=payload,
-                timeout=_REQUEST_TIMEOUT_SECONDS,
+                timeout=SLACK_REQUEST_TIMEOUT_SECONDS,
             )
         except requests.exceptions.Timeout as exc:
             raise SlackPostError(
-                f"Slack webhook request timed out after {_REQUEST_TIMEOUT_SECONDS}s"
+                f"Slack webhook request timed out after {SLACK_REQUEST_TIMEOUT_SECONDS}s"
             ) from exc
         except requests.exceptions.RequestException as exc:
             raise SlackPostError(f"Slack webhook request failed: {exc}") from exc

@@ -30,6 +30,13 @@ Actions cron).
 - `config.py` -- the *only* place environment variables are read. Every
   other module receives a `Config` object or plain values, never `os.environ`
   directly.
+- `constants.py` -- every non-secret, fixed implementation detail: API
+  base URL/paths, rate-limit/timeout/retry tuning, env var names, config
+  defaults, and formatter labels/messages. No module should have a literal
+  URL, magic number, or display string inline -- add it here and import it.
+  This file is for code constants only, not user configuration -- it never
+  holds a token, workspace id, or webhook URL (those stay in env vars via
+  `config.py`).
 - `formatter.py` -- pure functions only (no network, no filesystem, no
   wall-clock reads). Takes raw entries + a project lookup + a timezone in,
   returns a Markdown string out. This is what makes it trivially testable

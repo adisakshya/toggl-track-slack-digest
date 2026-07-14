@@ -13,7 +13,18 @@ import os
 from dataclasses import dataclass, field
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
-_REQUIRED_VARS = ("TOGGL_API_TOKEN", "TOGGL_WORKSPACE_ID", "SLACK_WEBHOOK_URL")
+from toggl_track_slack_digest.constants import (
+    DEFAULT_DIGEST_PERIOD_DAYS,
+    DEFAULT_TIMEZONE,
+    ENV_DIGEST_PERIOD_DAYS,
+    ENV_SLACK_WEBHOOK_URL,
+    ENV_TIMEZONE,
+    ENV_TOGGL_API_TOKEN,
+    ENV_TOGGL_PROJECT_IDS,
+    ENV_TOGGL_WORKSPACE_ID,
+)
+
+_REQUIRED_VARS = (ENV_TOGGL_API_TOKEN, ENV_TOGGL_WORKSPACE_ID, ENV_SLACK_WEBHOOK_URL)
 
 
 class ConfigError(Exception):
@@ -38,9 +49,9 @@ class Config:
     toggl_api_token: str
     toggl_workspace_id: str
     slack_webhook_url: str
-    digest_period_days: int = 7
+    digest_period_days: int = DEFAULT_DIGEST_PERIOD_DAYS
     toggl_project_ids: tuple[int, ...] = field(default_factory=tuple)
-    timezone: str = "UTC"
+    timezone: str = DEFAULT_TIMEZONE
 
     @property
     def zone_info(self) -> ZoneInfo:
@@ -72,15 +83,17 @@ class Config:
                 "of supported variables."
             )
 
-        digest_period_days = cls._parse_positive_int(source, "DIGEST_PERIOD_DAYS", default=7)
+        digest_period_days = cls._parse_positive_int(
+            source, ENV_DIGEST_PERIOD_DAYS, default=DEFAULT_DIGEST_PERIOD_DAYS
+        )
         toggl_project_ids = cls._parse_project_ids(source)
-        timezone = source.get("TIMEZONE", "UTC").strip() or "UTC"
+        timezone = source.get(ENV_TIMEZONE, DEFAULT_TIMEZONE).strip() or DEFAULT_TIMEZONE
         cls._validate_timezone(timezone)
 
         return cls(
-            toggl_api_token=source["TOGGL_API_TOKEN"],
-            toggl_workspace_id=source["TOGGL_WORKSPACE_ID"],
-            slack_webhook_url=source["SLACK_WEBHOOK_URL"],
+            toggl_api_token=source[ENV_TOGGL_API_TOKEN],
+            toggl_workspace_id=source[ENV_TOGGL_WORKSPACE_ID],
+            slack_webhook_url=source[ENV_SLACK_WEBHOOK_URL],
             digest_period_days=digest_period_days,
             toggl_project_ids=toggl_project_ids,
             timezone=timezone,
@@ -107,14 +120,14 @@ class Config:
 
     @staticmethod
     def _parse_project_ids(source: os._Environ[str] | dict[str, str]) -> tuple[int, ...]:
-        raw = source.get("TOGGL_PROJECT_IDS", "")
+        raw = source.get(ENV_TOGGL_PROJECT_IDS, "")
         if not raw or not raw.strip():
             return ()
         try:
             return tuple(int(part.strip()) for part in raw.split(",") if part.strip())
         except ValueError as exc:
             raise ConfigError(
-                "Environment variable TOGGL_PROJECT_IDS must be a comma-separated "
+                f"Environment variable {ENV_TOGGL_PROJECT_IDS} must be a comma-separated "
                 f"list of integers, got: {raw!r}"
             ) from exc
 
@@ -124,5 +137,5 @@ class Config:
             ZoneInfo(timezone)
         except ZoneInfoNotFoundError as exc:
             raise ConfigError(
-                f"Environment variable TIMEZONE is not a valid IANA timezone: {timezone!r}"
+                f"Environment variable {ENV_TIMEZONE} is not a valid IANA timezone: {timezone!r}"
             ) from exc

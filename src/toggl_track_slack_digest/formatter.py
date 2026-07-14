@@ -14,13 +14,15 @@ from datetime import datetime
 from typing import Any
 from zoneinfo import ZoneInfo
 
+from toggl_track_slack_digest.constants import (
+    NO_DESCRIPTION_LABEL,
+    NO_ENTRIES_MESSAGE,
+    NO_PROJECT_LABEL,
+    RUNNING_TIMERS_NOTICE_TEMPLATE,
+    TABLE_HEADER,
+    TABLE_SEPARATOR,
+)
 from toggl_track_slack_digest.toggl_client import TogglClient
-
-_TABLE_HEADER = "| Date | Project | Description | Duration (h:mm) |"
-_TABLE_SEPARATOR = "| --- | --- | --- | --- |"
-_NO_ENTRIES_MESSAGE = "No time entries logged this period."
-_NO_PROJECT_LABEL = "No Project"
-_NO_DESCRIPTION_LABEL = "(no description)"
 
 
 def format_digest(
@@ -45,9 +47,9 @@ def format_digest(
     running_count = len(running)
 
     if not completed:
-        message = _NO_ENTRIES_MESSAGE
+        message = NO_ENTRIES_MESSAGE
         if running_count:
-            message += f"\n\n_{running_count} timer(s) currently running (excluded from totals)._"
+            message += "\n\n" + RUNNING_TIMERS_NOTICE_TEMPLATE.format(count=running_count)
         return message
 
     table = format_time_entries_table(completed, project_lookup, timezone)
@@ -55,7 +57,7 @@ def format_digest(
 
     sections = [table, "", summary]
     if running_count:
-        sections.append(f"\n_{running_count} timer(s) currently running (excluded from totals)._")
+        sections.append("\n" + RUNNING_TIMERS_NOTICE_TEMPLATE.format(count=running_count))
     return "\n".join(sections)
 
 
@@ -82,13 +84,13 @@ def format_time_entries_table(
     for entry in entries:
         date = _local_date(entry, timezone)
         project = _project_name(entry, project_lookup)
-        description = entry.get("description") or _NO_DESCRIPTION_LABEL
+        description = entry.get("description") or NO_DESCRIPTION_LABEL
         duration = format_duration(entry["duration"])
         rows.append((date, project, description, duration))
 
     rows.sort(key=lambda row: (row[0], row[1]))
 
-    lines = [_TABLE_HEADER, _TABLE_SEPARATOR]
+    lines = [TABLE_HEADER, TABLE_SEPARATOR]
     lines.extend(
         f"| {date} | {project} | {description} | {duration} |"
         for date, project, description, duration in rows
@@ -169,8 +171,8 @@ def _to_hours(seconds: int) -> str:
 def _project_name(entry: dict[str, Any], project_lookup: dict[int, str]) -> str:
     project_id = entry.get("project_id")
     if project_id is None:
-        return _NO_PROJECT_LABEL
-    return project_lookup.get(project_id, _NO_PROJECT_LABEL)
+        return NO_PROJECT_LABEL
+    return project_lookup.get(project_id, NO_PROJECT_LABEL)
 
 
 def _local_date(entry: dict[str, Any], timezone: ZoneInfo) -> str:
