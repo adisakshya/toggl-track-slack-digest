@@ -123,7 +123,7 @@ def build_blocks(
     ]
 
     if data.anomalies:
-        blocks.append(_section_block("\n".join(_anomaly_lines(data))))
+        blocks.extend(_chunk_section_blocks(_anomaly_lines(data)))
 
     blocks.append(_divider_block())
     blocks.extend(
@@ -297,20 +297,31 @@ def _divider_block() -> dict[str, Any]:
 def _section_blocks(label: str, lines: list[str]) -> list[dict[str, Any]]:
     """Pack a bold label plus bullet lines into section blocks.
 
+    The label appears only on the first block; see `_chunk_section_blocks`
+    for how long lists are split to respect Slack's per-section limit.
+    """
+    return _chunk_section_blocks(lines, header=f"*{label}*")
+
+
+def _chunk_section_blocks(lines: list[str], header: str | None = None) -> list[dict[str, Any]]:
+    """Pack lines into section blocks under Slack's per-section char limit.
+
     Long lists are split across multiple section blocks so no single
-    block's text exceeds Slack's per-section character limit; the label
-    appears only on the first block.
+    block's text exceeds `SLACK_SECTION_TEXT_LIMIT`. An optional `header`
+    is placed on the first block only. Returns an empty list for no lines
+    and no header.
     """
     blocks: list[dict[str, Any]] = []
-    current = f"*{label}*"
+    current = header
     for line in lines:
-        candidate = f"{current}\n{line}"
-        if len(candidate) > SLACK_SECTION_TEXT_LIMIT:
+        candidate = f"{current}\n{line}" if current else line
+        if current is not None and len(candidate) > SLACK_SECTION_TEXT_LIMIT:
             blocks.append(_section_block(current))
             current = line
         else:
             current = candidate
-    blocks.append(_section_block(current))
+    if current is not None:
+        blocks.append(_section_block(current))
     return blocks
 
 

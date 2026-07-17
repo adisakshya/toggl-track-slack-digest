@@ -44,4 +44,5 @@ jobs:
           DIGEST_PERIOD_DAYS: ${{ vars.DIGEST_PERIOD_DAYS }}
           TOGGL_PROJECT_IDS: ${{ vars.TOGGL_PROJECT_IDS }}
           TIMEZONE: ${{ vars.TIMEZONE }}
+          ANOMALY_THRESHOLD_HOURS: ${{ vars.ANOMALY_THRESHOLD_HOURS }}
         run: make run

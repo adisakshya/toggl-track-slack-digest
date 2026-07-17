@@ -150,6 +150,31 @@ def test_no_anomaly_flag_for_normal_days(
     assert "⚠️" not in text
 
 
+def test_many_anomaly_days_chunk_under_section_limit(
+    sample_project_lookup: dict[int, str],
+) -> None:
+    # 60 days each over the threshold: the warnings must span multiple
+    # section blocks rather than one oversized block Slack would reject.
+    from datetime import timedelta
+
+    base = datetime(2026, 1, 1, tzinfo=UTC)
+    entries = [
+        {
+            "project_id": 111,
+            "start": (base + timedelta(days=i)).strftime("%Y-%m-%dT00:00:00Z"),
+            "duration": 17 * 3600,
+            "tags": [],
+        }
+        for i in range(60)
+    ]
+    blocks, text = _digest(entries, sample_project_lookup)
+
+    assert text.count("⚠️") == 60
+    anomaly_sections = [s for s in _section_texts(blocks) if "⚠️" in s]
+    assert len(anomaly_sections) >= 2
+    assert all(len(s) <= 2900 for s in _section_texts(blocks))
+
+
 def test_blocks_structure_and_native_mrkdwn(
     sample_time_entries: list[dict], sample_project_lookup: dict[int, str]
 ) -> None:
