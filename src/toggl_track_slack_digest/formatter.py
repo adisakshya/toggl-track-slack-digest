@@ -27,6 +27,7 @@ from zoneinfo import ZoneInfo
 
 from toggl_track_slack_digest.constants import (
     ANOMALY_LINE_TEMPLATE,
+    BLOCKS_TRUNCATED_NOTICE,
     BULLET_PREFIX,
     DAY_SECTION_LABEL,
     DIGEST_HEADER_TITLE,
@@ -34,6 +35,7 @@ from toggl_track_slack_digest.constants import (
     NO_PROJECT_LABEL,
     NO_TAG_LABEL,
     PROJECT_SECTION_LABEL,
+    SLACK_MAX_BLOCKS,
     SLACK_SECTION_TEXT_LIMIT,
     TAG_JOIN_SEPARATOR,
     TAG_SECTION_LABEL,
@@ -137,7 +139,7 @@ def build_blocks(
     )
     blocks.append(_divider_block())
     blocks.extend(_section_blocks(DAY_SECTION_LABEL, _day_lines(data)))
-    return blocks
+    return _cap_blocks(blocks)
 
 
 def build_fallback_text(
@@ -292,6 +294,19 @@ def _section_block(text: str) -> dict[str, Any]:
 
 def _divider_block() -> dict[str, Any]:
     return {"type": "divider"}
+
+
+def _cap_blocks(blocks: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    """Trim the block list to Slack's per-message block limit.
+
+    Slack rejects messages with more than `SLACK_MAX_BLOCKS` blocks. In the
+    rare case a digest has enough distinct buckets to exceed that, keep the
+    leading blocks and append a truncation notice -- the complete data is
+    always available in the `text` fallback sent alongside the blocks.
+    """
+    if len(blocks) <= SLACK_MAX_BLOCKS:
+        return blocks
+    return blocks[: SLACK_MAX_BLOCKS - 1] + [_section_block(BLOCKS_TRUNCATED_NOTICE)]
 
 
 def _section_blocks(label: str, lines: list[str]) -> list[dict[str, Any]]:

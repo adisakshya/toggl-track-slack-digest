@@ -63,6 +63,16 @@ TAG_JOIN_SEPARATOR = ", "
 # so "show every bucket" never overflows a block.
 SLACK_SECTION_TEXT_LIMIT = 2900
 
+# Slack caps a single message at 50 blocks. If a digest with very many
+# distinct buckets would exceed this, the block list is trimmed and a
+# notice appended -- the complete data always remains in the `text`
+# fallback that is sent alongside the blocks.
+SLACK_MAX_BLOCKS = 50
+BLOCKS_TRUNCATED_NOTICE = (
+    "_Rendered breakdown was trimmed to fit Slack's 50-block limit; "
+    "the complete breakdown is in this message's text._"
+)
+
 DIGEST_HEADER_TITLE = "📊 Toggl Time Digest"
 PROJECT_SECTION_LABEL = "🗂 By Project"
 TAG_SECTION_LABEL = "🏷 By Tag"

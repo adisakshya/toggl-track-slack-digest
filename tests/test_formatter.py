@@ -212,3 +212,19 @@ def test_shows_every_bucket_and_chunks_long_lists(sample_project_lookup: dict[in
     project_sections = [s for s in _section_texts(blocks) if "Project 0" in s]
     assert len(project_sections) >= 1
     assert all(len(s) <= 2900 for s in _section_texts(blocks))
+
+
+def test_blocks_capped_at_slack_message_limit(sample_project_lookup: dict[int, str]) -> None:
+    # Names long enough that each project is its own section block, so the
+    # block count would exceed Slack's 50-block cap without trimming.
+    lookup = {i: f"Project {'x' * 2800}-{i:03d}" for i in range(80)}
+    entries = [
+        {"project_id": i, "start": "2026-07-06T09:00:00Z", "duration": (i + 1) * 60, "tags": []}
+        for i in range(80)
+    ]
+    blocks, text = _digest(entries, lookup)
+
+    assert len(blocks) <= 50
+    assert "trimmed to fit Slack's 50-block limit" in blocks[-1]["text"]["text"]
+    # The complete data is preserved in the plain-text fallback.
+    assert "Project " + "x" * 2800 + "-079" in text
