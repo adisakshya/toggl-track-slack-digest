@@ -25,6 +25,35 @@ def test_post_message_success() -> None:
 
 
 @responses.activate
+def test_post_message_includes_blocks_when_provided() -> None:
+    blocks = [{"type": "header", "text": {"type": "plain_text", "text": "Digest"}}]
+    responses.add(
+        responses.POST,
+        _WEBHOOK_URL,
+        body="ok",
+        status=200,
+        match=[matchers.json_params_matcher({"text": "fallback", "blocks": blocks})],
+    )
+
+    client = SlackClient(_WEBHOOK_URL)
+    client.post_message("fallback", blocks=blocks)  # should not raise
+
+
+@responses.activate
+def test_post_message_omits_blocks_when_not_provided() -> None:
+    responses.add(
+        responses.POST,
+        _WEBHOOK_URL,
+        body="ok",
+        status=200,
+        match=[matchers.json_params_matcher({"text": "just text"})],
+    )
+
+    client = SlackClient(_WEBHOOK_URL)
+    client.post_message("just text")  # should not raise; no blocks key
+
+
+@responses.activate
 def test_post_message_non_200_raises_with_body_in_message() -> None:
     responses.add(
         responses.POST,

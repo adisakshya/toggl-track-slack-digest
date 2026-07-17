@@ -45,11 +45,14 @@ Actions cron).
   holds a token, workspace id, or webhook URL (those stay in env vars via
   `config.py`).
 - `formatter.py` -- pure functions only (no network, no filesystem, no
-  wall-clock reads). Takes raw entries + a project lookup + a timezone in,
-  returns a Markdown string out. This is what makes it trivially testable
-  with fixture data -- keep it that way.
+  wall-clock reads). Takes raw entries + a project lookup + a timezone +
+  the window dates in, returns `(blocks, text)`: a Slack Block Kit block
+  list plus a complete plain-text fallback mirroring the same data. This
+  is what makes it trivially testable with fixture data -- keep it that
+  way.
 - `toggl_client.py` / `slack_client.py` -- the only modules allowed to make
-  HTTP calls.
+  HTTP calls. `slack_client` posts the Block Kit `blocks` and the `text`
+  fallback in one Incoming Webhook payload.
 - `main.py` -- the only orchestration layer; wires config -> fetch -> format
   -> post and owns the process exit code.
 - Tests mock **all** HTTP calls (`responses` library or `unittest.mock`).
@@ -58,7 +61,11 @@ Actions cron).
 ## Explicitly out of scope (do not build)
 
 - No MCP server.
-- No Slack slash command or interactive component.
+- No Slack slash command or interactive component. (Block Kit *layout*
+  blocks -- header/section/divider/context -- are used for rendering;
+  that's fine. Interactive elements -- buttons, select menus, actions --
+  are not, and would need a bot token / request handling this stateless
+  job doesn't have.)
 - No database or persistent storage -- this stays stateless, fetch-format-post
   per run. Don't add caching layers or a "last run" state file.
 - No Cloudflare Worker.
@@ -67,21 +74,26 @@ Actions cron).
 
 ## Format stability
 
-The Markdown table columns (`Date | Project | Tags | Description | Duration
-(h:mm)`), the row sort order (date then project), the 2-decimal hour/
-percentage rounding, and the summary section order (Total hours -> Hours
-per project -> Hours per tag -> Hours per day) are all deliberately fixed
-so a downstream reader (e.g. Claude reading the Slack channel) can compare
-week-over-week output without format drift. Don't change these without a
-good reason, and if you do, note it clearly since it breaks that
-comparability.
+The digest is **aggregate-only** (no per-entry rows). The section order
+(header/range → anomaly flags → By Project → By Tag → By Day), the
+descending-by-hours ordering within Project/Tag, the chronological By Day
+order, the `Xh Ym` duration format, and the 2-decimal percentage /
+avg-hours-per-day rounding are all deliberately fixed so a downstream
+reader (primarily Claude reading the Slack channel for week-over-week
+insights) can compare output without format drift. The `text` fallback is
+the complete, markup-free mirror an LLM parses; keep it in sync with the
+`blocks`. Don't change these without a good reason, and if you do, note it
+clearly since it breaks comparability.
 
-Changed 2026-07: added the Tags column and per-project/per-tag percentage
-+ average-hours/day figures (average is total hours for that bucket divided
-by `DIGEST_PERIOD_DAYS`); dropped the "N timer(s) currently running" notice
-entirely -- running entries are now silently excluded, since the digest
-only reports completed time. Entries are grouped into a tag bucket by their
-exact set of tags, sorted alphabetically and comma-joined (so an entry
-tagged both "OLI Delivery" and "CSL Behring" rolls into one
-"CSL Behring, OLI Delivery" row, matching its Tags cell in the table) --
-per-tag-group hours and percentages sum to the total, same as per-project.
+Changed 2026-07: the per-project/per-tag/per-day breakdown carries
+percentage of total, average-hours/day (bucket hours ÷
+`DIGEST_PERIOD_DAYS`), and an entry count. Running entries are silently
+excluded (completed time only). Entries are grouped into a tag bucket by
+their exact set of tags, sorted alphabetically and comma-joined (so an
+entry tagged both "OLI Delivery" and "CSL Behring" rolls into one
+"CSL Behring, OLI Delivery" row) -- per-tag-group hours/percentages sum to
+the total, same as per-project. A day whose completed hours meet or exceed
+`ANOMALY_THRESHOLD_HOURS` (default 16) gets a "forgotten running timer"
+warning. Later in 2026-07 the per-entry Markdown table was dropped
+entirely and output moved to Slack Block Kit (native rendering) plus the
+plain-text fallback.
