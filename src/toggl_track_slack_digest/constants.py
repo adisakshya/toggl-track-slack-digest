@@ -39,18 +39,43 @@ ENV_SLACK_WEBHOOK_URL = "SLACK_WEBHOOK_URL"
 ENV_DIGEST_PERIOD_DAYS = "DIGEST_PERIOD_DAYS"
 ENV_TOGGL_PROJECT_IDS = "TOGGL_PROJECT_IDS"
 ENV_TIMEZONE = "TIMEZONE"
+ENV_ANOMALY_THRESHOLD_HOURS = "ANOMALY_THRESHOLD_HOURS"
 
 # --- Config: defaults ---
 
 DEFAULT_DIGEST_PERIOD_DAYS = 7
 DEFAULT_TIMEZONE = "UTC"
+# Any single day whose completed hours meet or exceed this triggers a
+# "check for a forgotten running timer" warning in the digest.
+DEFAULT_ANOMALY_THRESHOLD_HOURS = 16
 
-# --- Formatter: table ---
+# --- Formatter: shared labels ---
 
-TABLE_HEADER = "| Date | Project | Tags | Description | Duration (h:mm) |"
-TABLE_SEPARATOR = "| --- | --- | --- | --- | --- |"
 NO_ENTRIES_MESSAGE = "No time entries logged this period."
 NO_PROJECT_LABEL = "No Project"
 NO_TAG_LABEL = "No Tag"
-NO_DESCRIPTION_LABEL = "(no description)"
 TAG_JOIN_SEPARATOR = ", "
+
+# --- Formatter: Slack Block Kit rendering ---
+
+# Slack caps a single section block's text at 3000 characters. Bullet
+# lines are packed into section blocks that stay under this (with margin)
+# so "show every bucket" never overflows a block.
+SLACK_SECTION_TEXT_LIMIT = 2900
+
+# Slack caps a single message at 50 blocks. If a digest with very many
+# distinct buckets would exceed this, the block list is trimmed and a
+# notice appended -- the complete data always remains in the `text`
+# fallback that is sent alongside the blocks.
+SLACK_MAX_BLOCKS = 50
+BLOCKS_TRUNCATED_NOTICE = (
+    "_Rendered breakdown was trimmed to fit Slack's 50-block limit; "
+    "the complete breakdown is in this message's text._"
+)
+
+DIGEST_HEADER_TITLE = "📊 Toggl Time Digest"
+PROJECT_SECTION_LABEL = "🗂 By Project"
+TAG_SECTION_LABEL = "🏷 By Tag"
+DAY_SECTION_LABEL = "📅 By Day"
+BULLET_PREFIX = "• "
+ANOMALY_LINE_TEMPLATE = "⚠️ {date} shows {duration} — check for a forgotten running timer"

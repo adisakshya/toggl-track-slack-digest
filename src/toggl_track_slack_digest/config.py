@@ -14,8 +14,10 @@ from dataclasses import dataclass, field
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
 from toggl_track_slack_digest.constants import (
+    DEFAULT_ANOMALY_THRESHOLD_HOURS,
     DEFAULT_DIGEST_PERIOD_DAYS,
     DEFAULT_TIMEZONE,
+    ENV_ANOMALY_THRESHOLD_HOURS,
     ENV_DIGEST_PERIOD_DAYS,
     ENV_SLACK_WEBHOOK_URL,
     ENV_TIMEZONE,
@@ -44,6 +46,9 @@ class Config:
             projects are included.
         timezone: IANA timezone name used for date range computation and
             display formatting.
+        anomaly_threshold_hours: Any single day whose completed hours meet
+            or exceed this triggers a "forgotten running timer" warning in
+            the digest.
     """
 
     toggl_api_token: str
@@ -52,6 +57,7 @@ class Config:
     digest_period_days: int = DEFAULT_DIGEST_PERIOD_DAYS
     toggl_project_ids: tuple[int, ...] = field(default_factory=tuple)
     timezone: str = DEFAULT_TIMEZONE
+    anomaly_threshold_hours: int = DEFAULT_ANOMALY_THRESHOLD_HOURS
 
     @property
     def zone_info(self) -> ZoneInfo:
@@ -86,6 +92,9 @@ class Config:
         digest_period_days = cls._parse_positive_int(
             source, ENV_DIGEST_PERIOD_DAYS, default=DEFAULT_DIGEST_PERIOD_DAYS
         )
+        anomaly_threshold_hours = cls._parse_positive_int(
+            source, ENV_ANOMALY_THRESHOLD_HOURS, default=DEFAULT_ANOMALY_THRESHOLD_HOURS
+        )
         toggl_project_ids = cls._parse_project_ids(source)
         timezone = source.get(ENV_TIMEZONE, DEFAULT_TIMEZONE).strip() or DEFAULT_TIMEZONE
         cls._validate_timezone(timezone)
@@ -97,6 +106,7 @@ class Config:
             digest_period_days=digest_period_days,
             toggl_project_ids=toggl_project_ids,
             timezone=timezone,
+            anomaly_threshold_hours=anomaly_threshold_hours,
         )
 
     @staticmethod

@@ -1,14 +1,16 @@
 # Toggl Track to Slack Digest
 
-A small, stateless Python job that fetches your Toggl Track time entries for
-the last N days, formats them into a Markdown table (with project and tags
-per entry) plus a summary -- total hours, hours per project and per tag
-(each with % of total and average hours/day), and hours per day -- and
-posts the result to a Slack channel via an Incoming Webhook. It's built to
-run on a weekly GitHub Actions cron so a digest shows up automatically, and
-the format is deliberately rigid (fixed columns, fixed rounding, no merged
-cells) so that an LLM reading the Slack channel -- such as Claude -- can
-parse it reliably and compare patterns week over week.
+A small, stateless Python job that fetches your Toggl Track time entries
+for the last N days and posts an **aggregated** digest to a Slack channel
+via an Incoming Webhook -- total hours, hours per project and per tag (each
+with % of total, average hours/day, and an entry count), and hours per day,
+plus a "forgotten running timer" warning for any unusually long day. There
+are no per-entry rows. It renders natively in Slack via Block Kit and also
+carries a complete plain-text fallback, so an LLM reading the channel --
+such as Claude -- can parse it reliably and compare patterns week over
+week. It's built to run on a weekly GitHub Actions cron so a digest shows
+up automatically, and the format is deliberately rigid (fixed section
+order, fixed rounding) to keep that week-over-week comparison drift-free.
 
 ## Architecture
 
@@ -19,7 +21,7 @@ flowchart LR
     B --> D[TogglClient]
     D -->|GET /me/time_entries<br/>GET /workspaces/:id/projects| E[(Toggl Track API)]
     B --> F[formatter.py<br/>pure functions]
-    F --> G[Markdown table + summary]
+    F --> G[Block Kit blocks<br/>+ text fallback]
     B --> H[SlackClient]
     H -->|POST| I[(Slack Incoming Webhook)]
     I --> J[Slack channel]
@@ -48,8 +50,9 @@ flowchart LR
 3. Add non-secret configuration under **Settings -> Secrets and variables ->
    Actions -> Variables**:
    - `TOGGL_WORKSPACE_ID` (required)
-   - `DIGEST_PERIOD_DAYS`, `TOGGL_PROJECT_IDS`, `TIMEZONE` (all optional --
-     see the configuration reference below for defaults)
+   - `DIGEST_PERIOD_DAYS`, `TOGGL_PROJECT_IDS`, `TIMEZONE`,
+     `ANOMALY_THRESHOLD_HOURS` (all optional -- see the configuration
+     reference below for defaults)
 4. Do a first manual run from the **Actions** tab: open the "Weekly Toggl
    Digest" workflow and click **Run workflow** (this uses the
    `workflow_dispatch` trigger). Check the run logs and your Slack channel.
@@ -66,6 +69,7 @@ See the end of this README for the exact click-by-click steps.
 | `DIGEST_PERIOD_DAYS` | No | `7` | Number of trailing days the digest covers |
 | `TOGGL_PROJECT_IDS` | No | *(empty)* -- all projects | Comma-separated Toggl project ids to filter to |
 | `TIMEZONE` | No | `UTC` | IANA timezone used for date range computation and display |
+| `ANOMALY_THRESHOLD_HOURS` | No | `16` | Any single day at or above this many tracked hours is flagged as a likely forgotten running timer |
 
 ## Local development
 
@@ -102,11 +106,11 @@ the variables another way.
   entries and gives no error when it truncates. If a run hits that cap,
   the job fails with a clear error rather than posting an under-reported
   digest -- narrow `DIGEST_PERIOD_DAYS` or `TOGGL_PROJECT_IDS` and re-run.
-- **Slack tables don't render visually**: Slack's `mrkdwn` formatting does
-  not turn Markdown pipe tables into an actual visual table -- it displays
-  the raw `| a | b |` text. This is intentional here: the digest is meant to
-  be read programmatically (e.g. by Claude scanning the channel), not viewed
-  as a pretty table by a human.
+- **Aggregate-only output**: the digest reports totals per project, tag,
+  and day -- not individual time entries. If you need per-entry detail,
+  read it in Toggl directly. The message renders natively via Slack Block
+  Kit and includes a complete plain-text fallback carrying the same data
+  (which is what an LLM reading the channel parses).
 
 ## How to extend
 

@@ -1,10 +1,11 @@
 """Posts a formatted digest to Slack via an Incoming Webhook.
 
-Slack's `mrkdwn` renderer does not turn Markdown pipe tables into visual
-tables -- it will display the raw `| a | b |` text. That's fine for this
-project: the digest is written to be read programmatically (e.g. by Claude
-scanning the channel), not to look pretty to a human. Do not try to convert
-the table to Block Kit for visual rendering here; that is out of scope.
+The digest is sent as a Block Kit message (`blocks`) so it renders
+natively in the channel, alongside a plain-text `text` fallback carrying
+the same data (shown in notifications, and always parseable by an LLM
+reading the channel even if block rendering is stripped). Incoming
+Webhooks accept `blocks` with no bot token or OAuth scopes -- only these
+non-interactive layout blocks are used, no buttons or menus.
 """
 
 from __future__ import annotations
@@ -38,12 +39,14 @@ class SlackClient:
         self._webhook_url = webhook_url
         self._session = session or requests.Session()
 
-    def post_message(self, text: str) -> None:
-        """Post a plain-text (mrkdwn) message to the configured webhook.
+    def post_message(self, text: str, blocks: list[dict[str, Any]] | None = None) -> None:
+        """Post a message to the configured webhook.
 
         Args:
-            text: Message body. Sent as-is inside a single `text` field of
-                the webhook payload.
+            text: Plain-text fallback / notification body. Always sent.
+            blocks: Optional Block Kit block list. When provided it is
+                included alongside `text` so Slack renders the blocks and
+                falls back to `text` where blocks aren't shown.
 
         Raises:
             SlackPostError: If the request times out, cannot connect, or
@@ -53,6 +56,8 @@ class SlackClient:
                 `invalid_payload` or `channel_not_found`.
         """
         payload: dict[str, Any] = {"text": text}
+        if blocks is not None:
+            payload["blocks"] = blocks
         try:
             response = self._session.post(
                 self._webhook_url,

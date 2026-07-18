@@ -41,6 +41,7 @@ def test_defaults_apply_when_optional_vars_absent(valid_env: dict[str, str]) -> 
     assert config.digest_period_days == 7
     assert config.toggl_project_ids == ()
     assert config.timezone == "UTC"
+    assert config.anomaly_threshold_hours == 16
 
 
 def test_optional_vars_override_defaults(valid_env: dict[str, str]) -> None:
@@ -48,17 +49,27 @@ def test_optional_vars_override_defaults(valid_env: dict[str, str]) -> None:
     env["DIGEST_PERIOD_DAYS"] = "14"
     env["TOGGL_PROJECT_IDS"] = "111, 222,333"
     env["TIMEZONE"] = "America/New_York"
+    env["ANOMALY_THRESHOLD_HOURS"] = "12"
 
     config = Config.from_env(env)
 
     assert config.digest_period_days == 14
     assert config.toggl_project_ids == (111, 222, 333)
     assert config.timezone == "America/New_York"
+    assert config.anomaly_threshold_hours == 12
 
 
 def test_invalid_digest_period_days_raises(valid_env: dict[str, str]) -> None:
     env = dict(valid_env)
     env["DIGEST_PERIOD_DAYS"] = "not-a-number"
+
+    with pytest.raises(ConfigError):
+        Config.from_env(env)
+
+
+def test_invalid_anomaly_threshold_hours_raises(valid_env: dict[str, str]) -> None:
+    env = dict(valid_env)
+    env["ANOMALY_THRESHOLD_HOURS"] = "0"
 
     with pytest.raises(ConfigError):
         Config.from_env(env)

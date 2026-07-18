@@ -23,8 +23,8 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 
-def compute_date_range(config: Config, now: datetime | None = None) -> tuple[str, str]:
-    """Compute the RFC3339 [start, end] range covered by this digest.
+def compute_date_range(config: Config, now: datetime | None = None) -> tuple[datetime, datetime]:
+    """Compute the [start, end] datetime range covered by this digest.
 
     Args:
         config: Loaded configuration (uses `digest_period_days` and
@@ -33,11 +33,13 @@ def compute_date_range(config: Config, now: datetime | None = None) -> tuple[str
             `config.timezone`. Exposed for testability.
 
     Returns:
-        Tuple of (start_date, end_date) as RFC3339 strings.
+        Tuple of (start, end) as timezone-aware datetimes. Callers format
+        these to RFC3339 for the Toggl API and use them for the digest's
+        display range.
     """
     current = now or datetime.now(config.zone_info)
     start = current - timedelta(days=config.digest_period_days)
-    return start.isoformat(), current.isoformat()
+    return start, current
 
 
 def run() -> None:
@@ -45,16 +47,16 @@ def run() -> None:
     logger.info("Loading configuration")
     config = Config.from_env()
 
-    start_date, end_date = compute_date_range(config)
+    period_start, period_end = compute_date_range(config)
     logger.info(
         "Fetching Toggl time entries from %s to %s (timezone=%s)",
-        start_date,
-        end_date,
+        period_start.isoformat(),
+        period_end.isoformat(),
         config.timezone,
     )
 
     toggl_client = TogglClient(config.toggl_api_token)
-    entries = toggl_client.get_time_entries(start_date, end_date)
+    entries = toggl_client.get_time_entries(period_start.isoformat(), period_end.isoformat())
     logger.info("Fetched %d time entries", len(entries))
 
     if config.toggl_project_ids:
@@ -66,13 +68,19 @@ def run() -> None:
     logger.info("Fetched %d projects", len(project_lookup))
 
     logger.info("Formatting digest")
-    digest_text = format_digest(
-        entries, project_lookup, config.zone_info, config.digest_period_days
+    blocks, text = format_digest(
+        entries,
+        project_lookup,
+        config.zone_info,
+        config.digest_period_days,
+        period_start,
+        period_end,
+        config.anomaly_threshold_hours,
     )
 
     logger.info("Posting digest to Slack")
     slack_client = SlackClient(config.slack_webhook_url)
-    slack_client.post_message(digest_text)
+    slack_client.post_message(text=text, blocks=blocks)
 
     logger.info("Digest posted successfully")
 
