@@ -111,6 +111,11 @@ the variables another way.
   read it in Toggl directly. The message renders natively via Slack Block
   Kit and includes a complete plain-text fallback carrying the same data
   (which is what an LLM reading the channel parses).
+- **Slack Block Kit limit**: Slack caps a message at 50 blocks. In the rare
+  case a period has enough distinct projects/tags to exceed that, the
+  rendered blocks are trimmed and a notice is appended -- the complete
+  breakdown is always preserved in the plain-text fallback, so no data is
+  lost.
 
 ## How to extend
 
@@ -137,8 +142,8 @@ the variables another way.
 2. **Add variables**: same page -> **Variables** tab -> **New repository
    variable**.
    - Name: `TOGGL_WORKSPACE_ID`, Value: (your workspace id) -> **Add variable**
-   - Optionally add `DIGEST_PERIOD_DAYS`, `TOGGL_PROJECT_IDS`, `TIMEZONE` the
-     same way.
+   - Optionally add `DIGEST_PERIOD_DAYS`, `TOGGL_PROJECT_IDS`, `TIMEZONE`,
+     `ANOMALY_THRESHOLD_HOURS` the same way.
 3. **Run it**: repo page -> **Actions** tab -> select **Weekly Toggl Digest**
    in the left sidebar -> **Run workflow** button (top right) -> confirm
    branch -> **Run workflow**.
